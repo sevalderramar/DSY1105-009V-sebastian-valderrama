@@ -1,5 +1,4 @@
 
-
 val modelo = "Galaxy A55"
 val nombrePropietario = ""
 val bateria = 18
