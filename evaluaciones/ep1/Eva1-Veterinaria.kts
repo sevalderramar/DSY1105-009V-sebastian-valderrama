@@ -1,224 +1,312 @@
-import java.util.Date
+import java.time.LocalDateTime
+
 class Paciente(
     val id: String,
     val nombre: String,
+    val especie: String,
+    val tipo: String,
     val tipoDueño: String,
-    var silvestre: Boolean,
-    var disponible: Boolean
-
-
+    val silvestre: Boolean = false
 ){
+    val  fechaIngreso = LocalDateTime.now()
+
     init {
         require(id.isNotBlank()) {
-            "El ID del paciente no puede estar vacío."
+            "El ID del paciente no puede estar vacío. \n"
         }
-    }
-    fun registrarEntrada(): Boolean {
-
-        return if (disponible) {
-            disponible = false
-            println("El box está libre. \n")
-            true
-        } else {
-            println("El box tiene un pasiente asignado.\n")
-            false
+        require(nombre.isNotBlank()) {
+            "El nombre del paciente no puede estar vacío. \n"
         }
-    }
-    fun registrarSalida(): Boolean {
-
-        return if (!disponible) {
-            disponible = true
-            println("Paciente $id dado de alta con éxito\n")
-            true
-
-        } else {
-            println("Paciente $id no estaba en atención\n")
-            false
+        require(especie.isNotBlank()) {
+            "La especie del paciente no puede estar vacía. \n"
+        }
+        require(tipo in listOf("Canino", "Felino", "Exotico")) {
+            "El tipo de dueño del paciente no es válido. \n"
+        }
+        require(tipoDueño in listOf("convenio", "particular", "municipal")) {
+            "El tipo de dueño del paciente no es válido. \n"
         }
     }
 
-}
+    fun calcularTarifa(minutos: Int): Double {
 
-fun listar(Pacientes: MutableList<Paciente>){
+        require(minutos > 0) {
+            "La cantidad de minutos debe ser mayor a 0. \n"
+        }
+        val horas = minutos / 60.0
+        var costo = when (tipo){
 
-    for (Paciente in Pacientes) {
-        val estado = if(Paciente.disponible) "Disponible" else "en atención"
-        println("Paciente " +
-                "Id: " + "${Paciente.id} " +
-                "| Tipo: ${Paciente.nombre} " +
-                "| Dueño: ${Paciente.tipoDueño}" +
-                "| $estado \n")
-    }
-    println()
-}
-
-fun calcularTarifa(Paciente: Paciente, minutos: Int): Double {
-    val horas = minutos / 60.0
-    var costoBase = when (Paciente.tipoDueño){
-        "Canino" -> {
-            var costo = 12000 * horas
-            if (Paciente.tipoDueño == "convenio") {
-                costo = costo * 0.8
+            "Canino" -> {
+                12000 * horas
             }
-            costo
-        }
-        "Felino" -> {
-            var costoFelino = 9000 * horas
-            if (Paciente.tipoDueño == "convenio") {
-                costoFelino = costoFelino *
+            "Felino" -> {
+                if (minutos < 20) {
+                    0.0
+                } else {
+                    9000 * horas
+                }
             }
-            costoFelino
+            "Exotico" -> {
+                var costoExotico = 20000 * horas
+
+                if (silvestre) {
+                    costoExotico *= 1.30
+                }
+                costoExotico
+            }
+            else -> {
+                0.0
+            }
         }
 
+        if(tipo == "Felino" && minutos < 20) {
+            return 0.0
+        }
 
-        else -> 0.0
+        if(costo <= 0) {
+            throw IllegalArgumentException("La tarifa no puede ser negativa. \n")
+        }
+
+        if(tipoDueño == "convenio") {
+            costo *= 0.80
+        }
+        costo *= 1.19
+
+        if (tipoDueño == "municipal") {
+            costo *= 0.50
+        }
+        return costo
     }
-    return
 }
 
-
-fun procesarRegistro(Pacientes: MutableList<Paciente>): Int {
-
-    print("Ingrese el ID del paciente que desea registrar: ")
-
-    val idPaciente = readln()
-        .trim()
-        .uppercase()
-        .replace(" ", "")
-
-    val paciente = Pacientes.find { it.id.uppercase() == idPaciente }
-
-    if (paciente == null) {
-        println("El paciente con ID $idPaciente no encontrado\n")
-        return 0
-    }
-
-    if (!paciente.disponible) {
-        println("El Box con no está disponible. \n")
-        return 0
-    }
-
-    print("Ingrese la cantidad de horas que atendio al paciente: ")
-
-    val horas = readln()
-        .trim()
-        .toIntOrNull()
-
-    if (horas == null || horas <= 0) {
-        println("Cantidad de horas inválida. Ingrese un número mayor a 0.\n")
-        return 0
-    }
-
-
-    val tarifaTotal = paciente.cobro * horas
-
-    val registroExitoso = paciente.registrarEntrada()
-
-    if (registroExitoso) {
-        println("El paciente ${paciente.id} se ha registrado con éxito")
-        return tarifaTotal
-    }
-    return 0
-}
-
-
-fun resumen(
-    paciente: MutableList<Paciente>,
-    ingresTotal: Double,
-    cantidadAtencioines: Int,
+class box (
+    val numero: Int,
 ) {
-    println("Resumen de Paciente")
+        var estado = "Libre"
+        var paciente: Paciente? = null
+        var motivo = ""
 
-    val disponibles = Pacientes.count {
-        it.disponible
-    }
-    val enAtencion = Pacientes.count {
-        !it.disponible
-    }
-    val ingresoPromedio = if (cantidadAtencioines > 0){
-        ingresoTotal / cantidadAtencioines
-        } else {
-            0.0
+        fun entrada(nuevoPaciente: Paciente): Boolean {
+            if (estado != "Libre") {
+                return false
+            }
+            paciente = nuevoPaciente
+            estado = "En proceso"
+            motivo = "Registrando entrada"
+            return true
         }
-    println("ingreso total $ingresoTotal:")
-    println("Cantidad de Atenciones: $cantidadAtencioines")
-    println("Boxes disponibles: $disponibles")
-    println("Boxes en atencion: $enAtencion")
-    println("Ingreso promedio: $ingresoPromedio")
+        fun confirmarEntrada() {
+            if (estado == "En proceso") {
+                estado = "En atención"
+                motivo = ""
+            }
+        }
+        fun iniciarSalida(): Boolean {
+            if (estado != "En atención") {
+                return false
+            }
+            estado= "En proceso"
+            motivo = "Registrando salida"
 
+            return true
+        }
+        fun cancelarSalida(){
+            estado = "En atención"
+            motivo = ""
+        }
+        fun liberar(){
+            paciente = null
+            estado = "Libre"
+            motivo = ""
+        }
+        fun fueraDeServicio(motivoNuevo: String){
+            if (estado == "Libre" && motivoNuevo.isNotBlank()) {
+                estado = "Fuera de servicio"
+                motivo = motivoNuevo
+            }
+        }
 }
+class ticket (
+    val numero: Int,
+    val paciente: Paciente,
+    val minutos: Int,
+    val monto:  Double
+)
 
+val boxes = mutableListOf<box>()
+    for (i in 1..10) {
+        boxes.add(box(i))
+    }
 
-var Pacientes = mutableListOf<Paciente>()
+val historal = mutableListOf<ticket>()
+var ingresoTotal = 0.0
+var numeroTicket = 1
 
-val paciente1 = Paciente("CA12CD", "Canino", "convenio",  false, true)
-val paciente2 = Paciente("CA99ZA", "Canino", "particular",  false, true)
-val paciente3 = Paciente("FE22TO", "Felino", "particular",  false, true)
-val paciente4 = Paciente("EX44RG", "Exotico", "particular",  true, true)
-val paciente5 = Paciente("EX77RG", "Exotico", "municipal",  false, true)
+fun buscarBoxLibre(): box? {
+    return boxes.find { it.estado == "Libre" }
+}
+fun buscarPaciente(id: String): box? {
+    return boxes.find { it.paciente?.id == id }
+}
+fun listarBoxes() {
+    println("Estado de los boxes:")
+    for (box in boxes) {
+        val pacienteId = box.paciente?.id ?: "Sin paciente"
+        println("Box ${box.numero}: | Estado: ${box.estado}  | Paciente ID: $pacienteId | Motivo: ${box.motivo}")
+    }
+}
+fun registrarEntrada(){
+    try {
+        print("Ingrese el ID del paciente: ")
+        val id = readln()
+                .trim()
+                .uppercase()
+        val paciente = Pacientes.find { it.id == id }
+        if (paciente == null) {
+            println("No se encontró un paciente con ID $id. \n")
+            return
+        }
 
-Pacientes.add(paciente1)
-Pacientes.add(paciente2)
-Pacientes.add(paciente3)
-Pacientes.add(paciente4)
-Pacientes.add(paciente5)
+        if (boxes.any { it.paciente?.id == id }) {
+            println("El paciente con ID $id ya se encuentra en un box. \n")
+            return
+        }
+        val boxLibre = buscarBoxLibre()
+
+        if (boxLibre == null) {
+            println("No hay boxes disponibles para el paciente con ID $id. \n")
+            return
+        }
+        boxLibre.entrada(paciente)
+        boxLibre.confirmarEntrada()
+        println("Paciente con ID $id ingresado al box ${boxLibre.numero}. \n")
+
+    } catch (e: Exception) {
+        println("Error al registrar entrada: ${e.message} \n")
+    }
+}
+fun registrarSaida(){
+    print("Ingrese el ID del paciente para registrar salida: ")
+    val id = readln().trim().uppercase()
+    val boxPaciente = buscarPaciente(id)
+
+    if (boxPaciente == null) {
+        println("No se encontró un paciente con ID $id en ningún box. \n")
+        return
+    }
+    if (boxPaciente.estado != "En atención") {
+        println("El paciente con ID $id no está en atención. \n")
+        return
+    }
+    val paciente = boxPaciente.paciente?: return
+
+    print("Ingrese la cantidad de minutos de atención: ")
+    val minutos = readln().trim().toIntOrNull()
+
+    if (minutos == null || minutos <= 0) {
+        println("Cantidad de minutos inválida. \n")
+        return
+    }
+    if (!boxPaciente.iniciarSalida()) {
+        print("No se puede iniciar la salida del paciente con ID $id. \n")
+        return
+    }
+    try{
+        val monto = paciente.calcularTarifa(minutos)
+        val ticket = ticket(numeroTicket, paciente, minutos, monto)
+        historal.add(ticket)
+        ingresoTotal += monto
+        numeroTicket++
+
+        boxPaciente.liberar()
+
+        println("=======Ticket=======")
+        println("Número de ticket: ${ticket.numero}")
+        println("Paciente: ${ticket.paciente.nombre} | ID: ${ticket.paciente.id}")
+        println("Minutos de atención: ${ticket.minutos} min")
+        println("Monto a pagar: $${"%.2f".format(ticket.monto)}")
+        println("====================\n")
+
+    } catch (e: Exception) {
+        println("Error al calcular la tarifa: ${e.message} \n")
+        boxPaciente.cancelarSalida()
+        return
+    }
+}
+fun resumen(){
+    println("Resumen de ingresos y atenciones:")
+    historal.forEach {
+        println("Ticket: ${it.numero} | Paciente: ${it.paciente.tipo} | Minutos: ${it.minutos} min | Monto: ${it.monto}")
+        }
+
+    val disponibles = boxes.count { it.estado == "Libre" }
+    val promedio = if (historal.isNotEmpty()) {
+                        historal.map { it.monto }.average() } else 0.0
+    val convenio = historal.filter { it.paciente.tipoDueño == "convenio" }
+    val ids = historal.map { it.paciente.id }
+
+    val mayorTiempo = historal.maxByOrNull { it.minutos }
+    val ingresoCanino = historal.filter { it.paciente.tipo == "Canino" }.sumOf { it.monto }
+    val ingresoFelino = historal.filter { it.paciente.tipo == "Felino" }.sumOf { it.monto }
+    val ingresoExotico = historal.filter { it.paciente.tipo == "Exotico" }.sumOf { it.monto }
+
+    var tipoMayor = "Canino"
+    var mayorIngreso = ingresoCanino
+    if (ingresoFelino > mayorIngreso) {
+        tipoMayor = "Felino"
+        mayorIngreso = ingresoFelino
+    }
+    if (ingresoExotico > mayorIngreso) {
+        tipoMayor = "Exotico"
+        mayorIngreso = ingresoExotico
+    }
+    println("Total de ingresos: $ingresoTotal")
+    println("Cantidad de atenciones: ${historal.size}")
+    println("Cantidad de boxes disponibles: $disponibles")
+    println("Promedio de ingresos por atención: $promedio")
+    println("Cantidad de pacientes con convenio: ${convenio.size}")
+    println("IDs de pacientes atendidos: $ids")
+    if (mayorTiempo != null) {
+        println("Paciente con mayor tiempo de atención: ${mayorTiempo.paciente.nombre} con ${mayorTiempo.minutos} minutos")
+    } else {
+        println("No hay pacientes atendidos.\n")
+    }
+}
+val paciente1 = Paciente("CA12CD", "Max", "Golden Retriever", "Canino", "convenio")
+val paciente2 = Paciente("CA99ZA", "Luna", "Labrador", "Canino", "particular")
+val paciente3 = Paciente("FE22TO", "Misi", "Siamés", "Felino", "particular")
+val paciente4 = Paciente("EX44RG", "Loro", "Amazónico", "Exotico", "municipal", true)
+val paciente5 = Paciente("EX77RG", "Iguana", "Verde", "Exotico", "particular", false)
+var Pacientes = mutableListOf<Paciente>(paciente1, paciente2, paciente3, paciente4, paciente5)
 
 try {
-    val pacienteInvalido = Paciente("", "Canino", "particular", false,  true)
+    val pacienteInvalido = Paciente("", "test", "equis", "Canino",  "particular")
     Pacientes.add(pacienteInvalido)
-
 } catch (e: IllegalArgumentException) {
     println("Registro inválido, rechazado: ${e.message}\n")
 }
-
-
-var ingresoTotal = 0.0
-var cantidadAtenciones = 0
 var opcion = 0
-
 while (opcion != 5) {
     println(""" ===== Centro Veterinario =====
     |         1. Listar pacientes
     |         2. Registrar entrada de paciente
-    |         3. Dar de alta a paciente
+    |         3. Registrar salida
     |         4. Resumen
     |         5. Salir
-""".trimMargin())
-    print("Ingrese una opción: ")
-    opcion = readln()
+    """.    trimMargin())
+        print("Ingrese una opción: ")
+        opcion = readln()
         .trim()
         .toIntOrNull() ?: 0 /* Si es texto lo convierte a null, luego devueve un 0 */
-
-    when (opcion) {
-        1 -> {
-            listar(Pacientes)
-
-        }
-
-        2 -> {
-            procesarRegistro(Pacientes)
-
-        }
-
-        3 -> {
-            val monto = dardeAlta(Pacientes)
-            if (monto > 0) {
-                ingresoTotal += monto
-                cantidadAtenciones++
+        when (opcion) {
+            1 -> listarBoxes()
+            2 -> registrarEntrada()
+            3 -> registrarSaida()
+            4 -> resumen()
+            5 -> {
+                println("Saliendo del programa... \n")
+            } else -> {
+            println("Opción inválida. Por favor, ingrese una opción válida. \n")
             }
         }
-
-        4 -> {
-            resumen(Pacientes, ingresoTotal, cantidadAtenciones)
-
-        }
-
-        5 -> {
-            println("Saliendo del programa...")
-
-        } else -> {
-        println("Opción inválida. Por favor, ingrese una opción válida. \n")
     }
-    }
-}
-
