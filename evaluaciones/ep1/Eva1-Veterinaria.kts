@@ -11,6 +11,9 @@ class Paciente(
     val  fechaIngreso = LocalDateTime.now()
 
     init {
+        require(id.matches(Regex("^[A-Z]{2}{0-9}[A-Z]{2}$"))) {
+            "El ID debe tener formato CA12CD \n"
+        }
         require(id.isNotBlank()) {
             "El ID del paciente no puede estar vacío. \n"
         }
@@ -261,6 +264,7 @@ fun resumen(){
         mayorIngreso = ingresoExotico
     }
     println("Total de ingresos: $ingresoTotal")
+    println("Tipo de paciente con mayor ingreso: $tipoMayor con un total de $mayorIngreso")
     println("Cantidad de atenciones: ${historal.size}")
     println("Cantidad de boxes disponibles: $disponibles")
     println("Promedio de ingresos por atención: $promedio")
